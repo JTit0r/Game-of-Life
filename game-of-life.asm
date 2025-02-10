@@ -37,43 +37,210 @@
 .data
 
 	displayArray:
-	.space 0x4000
+		.space 0x4000
 	
 	auxiliarArray:
-	.space 0x4000
+		.space 0x4000
 
 ############################################################
 #							   #
 #	Populate Auxiliar Array 			   #
 #							   #
 ############################################################
-	
+
 .text
 
-	main:
-	j	populate
+main:
+# player_setup: Initializes the board to all dead cells and
+#sets up the highlighted cell for the player to move and toggle cells
+player_setup:
+	# Clear both arrays so that all 4096 cells are dead
+	jal	clear_arrays
 	
-	random_number:
-	#sw	$a0,	0($s0)
-	li	$a1,	2
-	li 	$v0,	42
+	# Initialize highlighted cell position
+	# $s0 = current column(x) and $s1 = current row(y)
+	li	$s0, 0		
+	li	$s1, 0		
+	
+	jal	draw_board
+	
+player_setup_loop:
+	# Read a character from the keyboard (syscall 12)
+	li	$v0, 12		# syscall code for read char
 	syscall
+	move	$t0, $v0	# store input character in $t0
+	
+	# If Enter(10) is pressed, start simulation
+	li	$t1, 10
+	beq	$t0, $t1, start_simulation
+	
+	# If Space(32) is pressed, toggle cell state
+	li	$t1, 32
+	beq	$t0, $t1, toggle_and_redraw
+	
+	# Check WASD keys for movement:
+	# w(119) = up
+	li	$t1, 119
+	beq	$t0, $t1, move_up
+	# s(115) = down
+	li	$t1, 115
+	beq	$t0, $t1, move_down
+	# a(97) = left
+	li	$t1, 97
+	beq	$t0, $t1, move_left
+	# d(100) = right
+	li	$t1, 100
+	beq	$t0, $t1, move_right
+	
+player_setup_redraw:
+	jal	draw_board
+	j	player_setup_loop
+
+# move_up: If not at the top edge, decrement row (y).
+move_up:
+	# Check if row > 0
+	bgtz	$s1, decrement_y
+	j	player_setup_redraw
+decrement_y:
+	addi	$s1, $s1, -1
+	j	player_setup_redraw
+
+# move_down: If not at the bottom edge (row 63), increment row.
+move_down:
+	li	$t1, 63
+	bge	$s1, $t1, player_setup_redraw
+	addi	$s1, $s1, 1
+	j	player_setup_redraw
+
+# move_left: If not at the left edge, decrement column (x).
+move_left:
+	bgtz	$s0, decrement_x
+	j	player_setup_redraw
+decrement_x:
+	addi	$s0, $s0, -1
+	j	player_setup_redraw
+
+# move_right: If not at the right edge (column 63), increment column.
+move_right:
+	li	$t1, 63
+	bge	$s0, $t1, player_setup_redraw
+	addi	$s0, $s0, 1
+	j	player_setup_redraw
+
+# toggle_and_redraw: Toggles the state of the highlighted cell,
+#then redraws the board.
+toggle_and_redraw:
+	jal	toggle_cell
+	j	player_setup_redraw
+
+# start_simulation: Called when the user presses Enter.
+#Jumps to the simulation routine using the current board.
+start_simulation:
+	j	display
+
+# clear_arrays: Clears all cells in both arrays.
+clear_arrays:
+	# Clear auxiliarArray first
+	li	$t0, 0x4000	# total number of bytes in the array
+	li	$t1, 0		# offset 
+	la	$t2, auxiliarArray
+clear_aux_loop:
+	bge	$t1, $t0, clear_display_loop
+	sw	$zero, 0($t2)	# store 0 in current cell
+	addi	$t2, $t2, 4
+	addi	$t1, $t1, 4
+	j	clear_aux_loop
+
+clear_display_loop:
+	# Clear displayArray
+	li	$t0, 0x4000
+	li	$t1, 0
+	la	$t2, displayArray
+clear_disp_loop:
+	bge	$t1, $t0, clear_end
+	sw	$zero, 0($t2)
+	addi	$t2, $t2, 4
+	addi	$t1, $t1, 4
+	j	clear_disp_loop
+clear_end:
 	jr	$ra
+
+# draw_board: Copies the auxiliar array into the display array,
+#then turns the currently highlighted cell with white.
+draw_board:
+	# Copy auxiliarArray into displayArray
+	li	$t0, 0x4000	# total bytes to copy
+	li	$t1, 0		# offset
+	la	$t2, displayArray
+	la	$t3, auxiliarArray
+draw_loop:
+	bge	$t1, $t0, highlight_cell
+	add	$t4, $t3, $t1
+	lw	$t5, 0($t4)
+	add	$t6, $t2, $t1
+	sw	$t5, 0($t6)
+	addi	$t1, $t1, 4
+	j	draw_loop
+# turn highlighted cell white
+highlight_cell:
+	# offset = (y * 64 + x) * 4
+	li	$t7, 64
+	mul	$t8, $s1, $t7	# t8 = y * 64
+	add	$t8, $t8, $s0	# t8 = (y * 64 + x)
+	sll	$t8, $t8, 2	# *4 to get byte offset
+	la	$t9, displayArray
+	add	$t9, $t9, $t8
+	li	$s7, 0xffffffff	# white
+	sw	$s7, 0($t9)
+	jr	$ra
+
+# toggle_cell: changes the state of the highlighted cell
+toggle_cell:
+	# offset = (y * 64 + x) * 4
+	li	$t7, 64
+	mul	$t8, $s1, $t7
+	add	$t8, $t8, $s0
+	sll	$t8, $t8, 2
+	la	$t9, auxiliarArray
+	add	$t9, $t9, $t8
+	lw	$t0, 0($t9)
+	# If cell is dead then make it live, otherwise kill it.
+	beq	$t0, $zero, make_live
+	li	$t0, 0
+	j	store_cell
+make_live:
+	li	$t0, 0xffffffff
+store_cell:
+	sw	$t0, 0($t9)
+	# update displayArray
+	la	$t9, displayArray
+	add	$t9, $t9, $t8
+	sw	$t0, 0($t9)
+	jr	$ra
+
+# Original Populate Auxiliary Array code (generates random game)
 	
-	populate:
-	li	$t0,	0x4000
-	addi	$t1,	$zero, 	0
-	la	$t2,	auxiliarArray
-	addi	$t3,	$zero, 	-1
+	#random_number:
+	#sw	$a0,	0($s0)
+	#li	$a1,	2
+	#li 	$v0,	42
+	#syscall
+	#jr	$ra
 	
-	populate_loop:
-	bgt	$t1,	$t0,	display
-	jal	random_number
-	mul	$a0, 	$a0, 	$t3
-	add	$t4,	$t2, 	$t1
-	sw	$a0,	0($t4)
-	addiu	$t1, 	$t1, 	4
-	j	populate_loop	
+	#populate:
+	#li	$t0,	0x4000
+	#addi	$t1,	$zero, 	0
+	#la	$t2,	auxiliarArray
+	#addi	$t3,	$zero, 	-1
+	
+	#populate_loop:
+	#bgt	$t1,	$t0,	display
+	#jal	random_number
+	#mul	$a0, 	$a0, 	$t3
+	#add	$t4,	$t2, 	$t1
+	#sw	$a0,	0($t4)
+	#addiu	$t1, 	$t1, 	4
+	#j	populate_loop	
 	
 ############################################################
 #							   #
