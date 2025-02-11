@@ -286,7 +286,7 @@ store_cell:
 #	  cell, as if by reproduction.			   #
 #							   #
 ############################################################
-
+	
 	verify:
 	lw	$a1,	0($a0)
 	addi	$a2,	$zero, 	0
@@ -304,7 +304,7 @@ store_cell:
 	
 	verify_2:
 	li	$s2,	0xffffffff
-	addi	$a3,	$a0,	-0xd8
+	addi	$a3,	$a0,	-0x100	# Correct offset -0xd8 -> -0x100 (256 bytes up)
 	blt	$a3,	$s4,	verify_3
 	lw	$s1,	0($a3)
 	seq	$s2,	$s1,	$s2
@@ -344,7 +344,7 @@ store_cell:
 	
 	verify_7:
 	li	$s2,	0xffffffff
-	addi	$a3,	$a0,	0xd8
+	addi	$a3,	$a0,	0x100	# Correct offset 0xd8 -> 0x100 (256 bytes down)
 	bgt	$a3,	$s5,	verify_8
 	lw	$s1,	0($a3)
 	seq	$s2,	$s1,	$s2
