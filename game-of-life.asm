@@ -51,6 +51,30 @@
 .text
 
 main:
+	# Read a character from the keyboard (syscall 12).
+	li	$v0, 12
+	syscall
+	move	$t0, $v0
+	
+	# Check if the user pressed '1' (ASCII 49).
+	li	$t1, 49
+	beq	$t0, $t1, interactive_mode
+	
+	# Check if the user pressed '2' (ASCII 50).
+	li	$t1, 50
+	beq	$t0, $t1, random_mode
+	
+	# If neither 1 nor 2 was pressed, loop back to prompt.
+	j	main
+
+interactive_mode:
+	# Branch to the interactive player setup routines.
+	j	player_setup
+
+random_mode:
+	# Branch to the random board generation routine.
+	j	populate
+	
 # player_setup: Initializes the board to all dead cells and
 #sets up the highlighted cell for the player to move and toggle cells
 player_setup:
@@ -220,27 +244,27 @@ store_cell:
 
 # Original Populate Auxiliary Array code (generates random game)
 	
-	#random_number:
+	random_number:
 	#sw	$a0,	0($s0)
-	#li	$a1,	2
-	#li 	$v0,	42
-	#syscall
-	#jr	$ra
+	li	$a1,	2
+	li 	$v0,	42
+	syscall
+	jr	$ra
 	
-	#populate:
-	#li	$t0,	0x4000
-	#addi	$t1,	$zero, 	0
-	#la	$t2,	auxiliarArray
-	#addi	$t3,	$zero, 	-1
+	populate:
+	li	$t0,	0x4000
+	addi	$t1,	$zero, 	0
+	la	$t2,	auxiliarArray
+	addi	$t3,	$zero, 	-1
 	
-	#populate_loop:
-	#bgt	$t1,	$t0,	display
-	#jal	random_number
-	#mul	$a0, 	$a0, 	$t3
-	#add	$t4,	$t2, 	$t1
-	#sw	$a0,	0($t4)
-	#addiu	$t1, 	$t1, 	4
-	#j	populate_loop	
+	populate_loop:
+	bgt	$t1,	$t0,	display
+	jal	random_number
+	mul	$a0, 	$a0, 	$t3
+	add	$t4,	$t2, 	$t1
+	sw	$a0,	0($t4)
+	addiu	$t1, 	$t1, 	4
+	j	populate_loop	
 	
 ############################################################
 #							   #
@@ -294,6 +318,7 @@ store_cell:
 	la	$s5,	auxiliarArray
 	addi	$s5,	$s5,	-0x4
 	
+	# Check upper-left neighbour
 	verify_1:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	-0x104
@@ -302,6 +327,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check upper neighbour
 	verify_2:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	-0x100	# Correct offset -0xd8 -> -0x100 (256 bytes up)
@@ -310,6 +336,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check upper-right neighbour
 	verify_3:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	-0xfc
@@ -318,6 +345,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check left neighbour
 	verify_4:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	-0x4
@@ -326,6 +354,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check right neighbour
 	verify_5:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	0x4
@@ -334,6 +363,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check lower-left neighbour
 	verify_6:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	0xfc
@@ -342,6 +372,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check lower neighbour
 	verify_7:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	0x100	# Correct offset 0xd8 -> 0x100 (256 bytes down)
@@ -350,6 +381,7 @@ store_cell:
 	seq	$s2,	$s1,	$s2
 	add	$a2,	$a2,	$s2
 	
+	# Check lower-right neighbour
 	verify_8:
 	li	$s2,	0xffffffff
 	addi	$a3,	$a0,	0x104
@@ -359,16 +391,16 @@ store_cell:
 	add	$a2,	$a2,	$s2
 	
 	verify_condition:	
-	beq	$a1,	$zero,	verify_false
-	j	verify_true
+	beq	$a1,	$zero,	verify_false	# if live, check if it dies
+	j	verify_true			# if dead, check if it lives
 	
 	verify_true:
-	blt	$a2,	2,	verify_dies
-	blt	$a2,	4,	verify_lives
-	j	verify_dies
+	blt	$a2,	2,	verify_dies	# if less than 2 live neighbours, die
+	blt	$a2,	4,	verify_lives	# if 2 or 3 live neighbours, survive
+	j	verify_dies			# if more than 4 live neighbours, die
 	
 	verify_false:
-	beq	$a2,	3,	verify_lives
+	beq	$a2,	3,	verify_lives	# if 3 live neighbours, be born
 	j	verify_dies
 	
 	verify_lives:
