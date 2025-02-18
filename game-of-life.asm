@@ -17,7 +17,15 @@
 
 # 	Victor Paiva Torres 	<vpaivatorres@gmail.com>
 #	February 23, 2015	Natal, RN - Brazil
+
+# 	Davi Komori Araujo 	<davi.komori@unifesp.br>
+# 	Gabriela C. M. dos Santos 	<gabriela.moreira@unifesp.br>
+# 	João V. G. Dantas 	<dantas.joao@unifesp.br>
+# 	Laura da S. Morgado 	<laura.morgado@unifesp.br>
+#	February 18, 2025	São José dos Campos, SP - Brazil
+
 #	MIPS Assembly		Mars Simulator 4.5
+#	To You, 10 Years From Now
 
 ############################################################
 #							   #
@@ -56,15 +64,15 @@ main:
 	syscall
 	move	$t0, $v0
 	
-	# Check if the user pressed '1' (ASCII 49).
+	# If 1(ASCII 49) is pressed, go to player_setup.
 	li	$t1, 49
 	beq	$t0, $t1, interactive_mode
 	
-	# Check if the user pressed '2' (ASCII 50).
+	# If 2(ASCII 50) is pressed, generate random game.
 	li	$t1, 50
 	beq	$t0, $t1, random_mode
 	
-	# If neither 1 nor 2 was pressed, loop back to prompt.
+	# While neither 1 nor 2 was pressed, loop back to prompt.
 	j	main
 
 interactive_mode:
