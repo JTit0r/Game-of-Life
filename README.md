@@ -19,6 +19,13 @@
  	
  	Victor Paiva Torres 	<vpaivatorres@gmail.com>
 	February 23, 2015		Natal, RN - Brazil
+ 
+ 	Davi Komori Araujo 	<davi.komori@unifesp.br>
+ 	Gabriela C. M. dos Santos 	<gabriela.moreira@unifesp.br>
+ 	João V. G. Dantas 	<dantas.joao@unifesp.br>
+ 	Laura da S. Morgado 	<laura.morgado@unifesp.br>
+	February 18, 2025	São José dos Campos, SP - Brazil
+ 
 	MIPS Assembly			Mars Simulator 4.5
 	
 	-----------------------------------------------------
@@ -56,6 +63,24 @@
 	  cell, as if by reproduction.	
 	
 	-----------------------------------------------------
+			CONTROLS
+ 
+ 	- Press 1 to choose player-setup mode,
+  	  allowing for setup of initial conditions for
+     	  the simulation.
+	
+	- Press 2 to generate a random board and run the
+ 	  simulation.
+    
+	- When in player-setup mode, use WASD to move a
+ 	  cursor across the display and choose a desired
+    	  cell to change.
+       
+        - Press Space to toggle the chosen cell´s state.
+	
+	- When in player-setup mode, press Enter to run
+ 	  the simulation.
+ 	-----------------------------------------------------
 
 	64 columns 	width pixels			   
 	64 rows 	height pixels
